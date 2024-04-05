@@ -1,5 +1,10 @@
 ## A Tiny tensor library + an autograd engine
 
+- To run examples:
+```bash
+    PYTHONPATH="." python3 ./examples/or_gate.py
+```
+
 ### TODO:
 - [ ] A functional tensor library
 - [ ] Passing Backward passes with tests

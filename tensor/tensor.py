@@ -52,6 +52,15 @@ class Value:
         val._backward = _backward
         return val
 
+    def relu(self):
+        val = Value(0 if self._val < 0 else self._val, [self], "relu")
+
+        def _backward():
+            self._grad += (1 if self._val > 0 else 0) * val._grad
+
+        val._backward = _backward
+        return val
+
     def backward(self):
         visited = {}
         queue = []
