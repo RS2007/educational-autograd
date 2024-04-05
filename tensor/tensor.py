@@ -13,6 +13,8 @@ class Value:
         return f"val: {self._val} and grad: {self._grad} and op: {self._op}"
 
     def __add__(self, b):
+        if not isinstance(b, Value):
+            b = Value(b)
         val = Value(self._val + b._val, [self, b], "+")
 
         def _backward():
@@ -38,6 +40,9 @@ class Value:
         return val
 
     def __mul__(self, b):
+        if not isinstance(b, Value):
+            b = Value(b)
+
         val = Value(self._val * b._val, [self, b], "-")
 
         def _backward():
@@ -64,3 +69,6 @@ class Value:
         self._grad = 1.0
         for node in reversed(queue):
             node._backward()
+
+    def zero_grad(self):
+        self._grad = 0
