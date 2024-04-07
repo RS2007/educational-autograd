@@ -13,7 +13,7 @@ def mine(inputs, outputs):
     for i in range(10000):
         loss = Value(0)
         for [x1, y1], output in zip(inputs, outputs):
-            net_out = layer2(layer1([Value(x1), Value(y1)]))[0].relu()
+            net_out = layer2(layer1([Value(x1), Value(y1)]))[0].relu().dropout(0.4)
             loss += (net_out - output) ** 2
         optim.zero_grad()
         loss.backward()
@@ -30,7 +30,8 @@ def mine(inputs, outputs):
 def pytorch(inputs, outputs):
     layer1 = torch.nn.Linear(2, 2)
     layer2 = torch.nn.Linear(2, 1)
-    model = torch.nn.Sequential(layer1, layer2)
+    layer3 = torch.nn.Dropout(0.4)
+    model = torch.nn.Sequential(layer1, layer2, layer3)
     optim = torch.optim.SGD(model.parameters(), 0.001)
     for i in range(10000):
         loss = 0

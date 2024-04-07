@@ -2,7 +2,15 @@ import numpy as np
 from tensor.tensor import Value
 
 
-class Linear:
+class Module:
+    def __init__(self):
+        pass
+
+    def __call__(self, x):
+        return self.forward(x)
+
+
+class Linear(Module):
     def __init__(self, in_feat, out_feat, bias=True):
         self.in_feat = in_feat
         self.out_feat = out_feat
@@ -27,9 +35,6 @@ class Linear:
 
     def forward(self, x):
         return (self._w) @ x + self._b
-
-    def __call__(self, x):
-        return self.forward(x)
 
     def parameters(self):
         return np.hstack([*self._w, self._b])
