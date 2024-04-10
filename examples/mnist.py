@@ -76,6 +76,8 @@ def torch_mnist(train_loader, test_loader):
 
         print("Epoch: {} \tTraining Loss: {:.6f}".format(i + 1, train_loss))
 
+    # TODO: save the mlp weights to
+    torch.save(model.state_dict(), "./mnist-weights.pth")
     test_loss = 0.0
     class_correct = list(0.0 for i in range(10))
     class_total = list(0.0 for i in range(10))

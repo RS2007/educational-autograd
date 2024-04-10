@@ -1,5 +1,7 @@
 import numpy as np
-from tensor.tensor import Value
+from tensor.tensor import Tensor, Value
+
+# TODO: Refactor to use the tensor abstraction
 
 
 class Module:
@@ -36,5 +38,17 @@ class Linear(Module):
     def forward(self, x):
         return (self._w) @ x + self._b
 
+
+class Linear2(Module):
+    def __init__(self, in_feat, out_feat, bias=True):
+        self.in_feat = in_feat
+        self.out_feat = out_feat
+        self.bias = bias
+        self.W = Tensor(np.random.rand(out_feat, in_feat))
+        self.b = Tensor(np.random.rand(out_feat))
+
+    def forward(self, x):
+        return x @ self.W.transpose() + self.b
+
     def parameters(self):
-        return np.hstack([*self._w, self._b])
+        return [self.W, self.b]

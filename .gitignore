@@ -2,3 +2,8 @@
 __pycache__/
 a.py
 data/
+a.c
+a.out
+*.pth
+new.txt
+.env

@@ -4,6 +4,7 @@ from tensor.tensor import Value, Tensor
 import torch
 import nn
 import numpy as np
+import tinygrad
 
 
 class TestValBasic(unittest.TestCase):
@@ -46,16 +47,12 @@ class TestValBasic(unittest.TestCase):
             torch_res = torch.sum(torch_layer(torch_x))
         self.assertEqual(torch_res, d._val)
 
-    def test_tensor_abstraction(self):
-        import tinygrad
-
+    def test_tensor_abstraction_add_sum(self):
         a = Tensor([1.0, 1.0], requires_grad=True)
         b = Tensor([2.0, 3.0], requires_grad=True)
         c = a + b
         d = c.sum()
         d.backward()
-        print(a)
-        print(b)
         a1 = tinygrad.tensor.Tensor([1.0, 1.0], requires_grad=True)
         b1 = tinygrad.tensor.Tensor([2.0, 3.0], requires_grad=True)
         c1 = a1 + b1
@@ -65,6 +62,54 @@ class TestValBasic(unittest.TestCase):
         self.assertEqual(b.data.tolist(), b1.numpy().tolist())
         self.assertEqual(a.grad.data.tolist(), a1.grad.numpy().tolist())
         self.assertEqual(b.grad.data.tolist(), b1.grad.numpy().tolist())
+
+    def test_tensor_abstraction_mul(self):
+        a = Tensor([1.0, 1.0], requires_grad=True)
+        b = Tensor([2.0, 3.0], requires_grad=True)
+        c = a * b
+        d = c.sum()
+        d.backward()
+        a1 = tinygrad.tensor.Tensor([1.0, 1.0], requires_grad=True)
+        b1 = tinygrad.tensor.Tensor([2.0, 3.0], requires_grad=True)
+        c1 = a1 * b1
+        d1 = c1.sum()
+        d1.backward()
+        self.assertEqual(a.data.tolist(), a1.numpy().tolist())
+        self.assertEqual(b.data.tolist(), b1.numpy().tolist())
+        self.assertEqual(a.grad.data.tolist(), a1.grad.numpy().tolist())
+        self.assertEqual(b.grad.data.tolist(), b1.grad.numpy().tolist())
+
+    def test_tensor_abstraction_pow(self):
+        b = Tensor([2.0, 3.0], requires_grad=True)
+        c = b**3
+        d = c.sum()
+        d.backward()
+        b1 = tinygrad.tensor.Tensor([2.0, 3.0], requires_grad=True)
+        c1 = b1**3
+        d1 = c1.sum()
+        d1.backward()
+        self.assertEqual(b.data.tolist(), b1.numpy().tolist())
+        self.assertEqual(b.grad.data.tolist(), b1.grad.numpy().tolist())
+
+    def test_matrix_mul(self):
+        a = Tensor([[1.0, 2.0], [3.0, 4.0]])
+        b = Tensor([[5.0, 6.0], [7.0, 8.0]])
+        c = a @ b
+        d = c.sum()
+        d.backward()
+        a1 = tinygrad.tensor.Tensor([[1.0, 2.0], [3.0, 4.0]], requires_grad=True)
+        b1 = tinygrad.tensor.Tensor([[5.0, 6.0], [7.0, 8.0]], requires_grad=True)
+        c1 = a1 @ b1
+        d1 = c1.sum()
+        d1.backward()
+        self.assertEqual(d.data.tolist()[0], d1.numpy().tolist())
+        self.assertEqual(a.grad.data.tolist(), a1.grad.numpy().tolist())
+        self.assertEqual(b.grad.data.tolist(), b1.grad.numpy().tolist())
+
+
+class TestCodegen(unittest.TestCase):
+    def test_c_codegen(self):
+        pass
 
 
 if __name__ == "__main__":
