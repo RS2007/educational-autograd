@@ -1,6 +1,8 @@
 import numpy as np
 from typing import List
 
+DEBUG = 0
+
 
 class Experiment:
     def __init__(self, op_name, args):
@@ -106,8 +108,6 @@ class MatMul:
         ret.ops = Experiment("matmul", [a, b])
         return ret
 
-
-
     @staticmethod
     def backward(parents, grad):
         [a, b] = parents
@@ -119,6 +119,7 @@ class MatMul:
             axes = list(range(num_axes))
             axes[dim1], axes[dim2] = dim2, dim1
             return x.transpose(axes)
+
         if len(a.shape) == 1 and len(b.shape) == 1:
             # vector * vector
             grad_x = grad.data * b.data
@@ -141,10 +142,7 @@ class MatMul:
             dim_diff_y = len(a.shape) - len(b.shape)
             axis_to_sum_y = tuple(range(dim_diff_y))
             grad_y = (transpose_last_axis(a.data) @ grad.data).sum(axis=axis_to_sum_y)
-        return [grad_x,grad_y]
-
-
-
+        return [Tensor(grad_x, is_load=False), Tensor(grad_y, is_load=False)]
 
 
 class TempVarGenerator:
@@ -227,7 +225,12 @@ def gen_matmul(arr1, arr2, loop_dims, out_shape, target):
 
 class Tensor:
     # TODO: Unfinished abstraction, need to make lots of changes
+    tensor_id = 0
+
     def __init__(self, arr, parents=None, op=None, requires_grad=False, is_load=True):
+        assert isinstance(arr, list) or isinstance(arr, np.ndarray), "Should be a list"
+        self.id = Tensor.tensor_id + 1
+        Tensor.tensor_id += 1
         self.data = np.array(arr, dtype=np.float32)
         self.requires_grad = requires_grad
         self.grad = None
@@ -319,7 +322,7 @@ class Tensor:
 
     def zero_grad(self):
         if self.grad is not None:
-            self.grad = Tensor(np.zeros_like(self.grad))
+            self.grad = Tensor(np.zeros_like(self.grad.data))
         else:
             self.grad = Tensor(np.zeros_like(self.data).astype(np.float32))
 
@@ -352,10 +355,15 @@ class Tensor:
         return val
 
     def __repr__(self):
-        return f"data: {self.data} and grad: {self.grad} with op: {self.op}"
+        if DEBUG:
+            return f"id is {self.id} and data: {self.data} and grad: {self.grad} with op: {self.op}"
+        else:
+            return f"{self.data}"
 
     def __pow__(self, n):
         if not isinstance(n, Tensor):
+            if not isinstance(n, list):
+                n = [n]
             n = Tensor(n)
         val = Pow.forward(self, n)
         val.op = Pow.backward
@@ -413,16 +421,14 @@ class Tensor:
             for tensor, grad in zip(node.parents, grads):
                 if grad is None:
                     continue
-                if tensor.grad is None or (not isinstance(tensor.grad.data,np.ndarray) and tensor.grad.data == 0):
+                if tensor.grad is None or (
+                    not isinstance(tensor.grad.data, np.ndarray)
+                    and tensor.grad.data == 0
+                ):
                     tensor.grad = Tensor(np.zeros_like(tensor.data).astype(np.float32))
-                    
-                print("node.grad: ",node.grad)
-                print("parents: ",node.parents)
-                print("op: ",node.op)
-                print("tensor grad: ",tensor.grad.data)
-                print("grad: ",grad.data)
+
                 tensor.grad.data += grad.data
-                print("new tensor grad: ",tensor.grad.data)
+                assert isinstance(tensor.grad.data, np.ndarray)
 
 
 class Value:

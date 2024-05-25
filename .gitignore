@@ -7,3 +7,5 @@ a.out
 *.pth
 new.txt
 .env
+.DS_Store
+shaktimaan.md

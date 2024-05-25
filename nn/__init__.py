@@ -51,9 +51,4 @@ class Linear2(Module):
         return x @ self.W.transpose() + self.b
 
     def parameters(self):
-        print(f"self.b: {id(self.b)}")
-        print(f"self.W: {id(self.W)}")
-        a = [self.b,self.W]
-        for stuff in a:
-            print("From parameters: ",id(stuff))
-        return a
+        return [self.b, self.W]
