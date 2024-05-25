@@ -106,6 +106,20 @@ class TestValBasic(unittest.TestCase):
         self.assertEqual(a.grad.data.tolist(), a1.grad.numpy().tolist())
         self.assertEqual(b.grad.data.tolist(), b1.grad.numpy().tolist())
 
+    def test_sum_pow(self):
+        a = Tensor([1.0, 2.0])
+        b = Tensor([5.0, 6.0])
+        c = (a.sum() + b.sum())**2
+        c.backward()
+        a1 = tinygrad.tensor.Tensor([1.0, 2.0], requires_grad=True)
+        b1 = tinygrad.tensor.Tensor([5.0, 6.0], requires_grad=True)
+        c1 = (a1.sum() + b1.sum())
+        c1.backward()
+        self.assertEqual(c.data.tolist()[0], c1.numpy().tolist())
+        self.assertEqual(a.grad.data.tolist(), a1.grad.numpy().tolist())
+        self.assertEqual(b.grad.data.tolist(), b1.grad.numpy().tolist())
+
+
 
 class TestCodegen(unittest.TestCase):
     def test_c_codegen(self):

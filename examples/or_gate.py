@@ -30,16 +30,12 @@ def mine(inputs, outputs):
 def mine2(inputs, outputs):
     # TODO: use the tensor semantics here to do the same
     layer1 = nn.Linear2(2, 2)
-    layer2 = nn.Linear2(2, 1)
-    print(layer1.parameters())
-    print(layer2.parameters())
-    optim = SGD(layer1.parameters() + layer2.parameters(), 0.001)
-    for i in range(1):
+    #layer2 = nn.Linear2(2, 1)
+    optim = SGD(layer1.parameters(), 0.001)
+    for i in range(2):
         loss = Tensor([0])
         for [x1, y1], output in zip(inputs, outputs):
-            print(f"x1: {x1}")
-            print(f"y1: {y1}")
-            net_out = layer2(layer1(Tensor([x1, y1])))
+            net_out = (layer1(Tensor([x1, y1])))
             #            print("net_out:", net_out)
             #            print("output:", output)
             loss += (net_out.sum() - Tensor([output]).sum()) ** 2
@@ -48,6 +44,8 @@ def mine2(inputs, outputs):
         loss.backward()
         optim.step_tensor()
         print(f"Loss is {loss}")
+        #print(f"Layer 1 params: {layer1.parameters()}")
+        #print(f"Layer 2 params: {layer2.parameters()}")
     # print("Results")
     # for [x1, y1], output in zip(inputs, outputs):
     #     net_out = layer2(layer1([Value(x1), Value(y1)]))[0].relu()

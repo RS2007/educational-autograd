@@ -106,23 +106,45 @@ class MatMul:
         ret.ops = Experiment("matmul", [a, b])
         return ret
 
+
+
     @staticmethod
     def backward(parents, grad):
         [a, b] = parents
-        # TODO: works only for 2d, thats enough for now, change later
-        print("")
-        print("")
-        print("Matmul backward")
-        print(grad.data)
-        print(a.data.T)
-        print(b.data.T)
-        print("")
-        print("")
-        if isinstance(grad, Tensor):
-            return Tensor(grad.data @ b.data.T), Tensor(a.data.T @ grad.data)
-        print(grad.data)
-        print(b.data)
-        return Tensor(grad @ b.data.T), Tensor(a.data.T @ grad)
+
+        def transpose_last_axis(x):
+            dim1, dim2 = -2, -1
+            num_axes = len(x.shape)
+            dim1, dim2 = (dim1 + num_axes) % num_axes, (dim2 + num_axes) % num_axes
+            axes = list(range(num_axes))
+            axes[dim1], axes[dim2] = dim2, dim1
+            return x.transpose(axes)
+        if len(a.shape) == 1 and len(b.shape) == 1:
+            # vector * vector
+            grad_x = grad.data * b.data
+            grad_y = a.data * grad.data
+        elif len(a.shape) == 1:
+            # vector * matrix
+            grad_x = grad.data @ b.data.T
+            grad_y = np.outer(a.data, grad.data)
+        elif len(b.shape) == 1:
+            # matrix * vector
+            dim_diff = len(b.shape) - len(a.shape)
+            axis_to_sum = tuple(range(dim_diff))
+            grad_x = np.outer(grad.data, b).sum(axis=axis_to_sum)
+            grad_y = grad.data.T @ a.data
+        else:
+            # matrix * matrix
+            dim_diff = len(b.shape) - len(a.shape)
+            axis_to_sum = tuple(range(dim_diff))
+            grad_x = (grad.data @ transpose_last_axis(b.data)).sum(axis=axis_to_sum)
+            dim_diff_y = len(a.shape) - len(b.shape)
+            axis_to_sum_y = tuple(range(dim_diff_y))
+            grad_y = (transpose_last_axis(a.data) @ grad.data).sum(axis=axis_to_sum_y)
+        return [grad_x,grad_y]
+
+
+
 
 
 class TempVarGenerator:
@@ -214,6 +236,10 @@ class Tensor:
         self._backward = lambda: None
         self.ops = Experiment("load", ()) if is_load else None
 
+    @property
+    def shape(self):
+        return self.data.shape
+
     def print_ops(self, depth=0):
         if self.ops is None:
             return
@@ -304,6 +330,8 @@ class Tensor:
         return val
 
     def __add__(self, b):
+        if not isinstance(b, Tensor):
+            b = Tensor(b)
         val = Plus.forward(self, b)
         val.op = Plus.backward
         val.parents = [self, b]
@@ -376,23 +404,25 @@ class Tensor:
             visited[graph] = True
 
         _topo(self)
-        print(queue)
         for node in reversed(queue):
             if node.op is None:
                 continue
-            print(f"Calling back on {node} with {node.parents}")
             grads = node.op(node.parents, node.grad)
             if len(node.parents) == 1:
                 grads = [grads]
             for tensor, grad in zip(node.parents, grads):
-                print(tensor.grad)
                 if grad is None:
                     continue
-                if tensor.grad is None:
+                if tensor.grad is None or (not isinstance(tensor.grad.data,np.ndarray) and tensor.grad.data == 0):
                     tensor.grad = Tensor(np.zeros_like(tensor.data).astype(np.float32))
-                print(grad.data)
-                print(tensor.data)
+                    
+                print("node.grad: ",node.grad)
+                print("parents: ",node.parents)
+                print("op: ",node.op)
+                print("tensor grad: ",tensor.grad.data)
+                print("grad: ",grad.data)
                 tensor.grad.data += grad.data
+                print("new tensor grad: ",tensor.grad.data)
 
 
 class Value:
