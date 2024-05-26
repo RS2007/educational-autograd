@@ -13,6 +13,10 @@ class Experiment:
         return f"{self.op_name}"
 
 
+def reshape_grad():
+    pass
+
+
 class Plus:
     @staticmethod
     def forward(*args):
@@ -30,14 +34,55 @@ class Plus:
         return Tensor([grad], is_load=False), Tensor([grad], is_load=False)
 
 
-class Max:
+class ReLU:
     @staticmethod
     def forward(*args):
         assert len(args) == 1
         [a] = args
-        ret = Tensor(np.array([np.max(a.data)]), is_load=False)
-        ret.ops = Experiment("max", [a])
+        ret = Tensor(np.maximum(0, args.data))
+        ret.ops = Experiment("relu", [a])
         return ret
+
+    @staticmethod
+    def backward(parents, grad):
+        (a,) = parents
+        return Tensor(np.where(a.data > 0, 1, 0)) * grad
+
+
+class Exp:
+    @staticmethod
+    def forward(*args):
+        assert len(args) == 1
+        [a] = args
+        ret = Tensor(np.exp(a.data), is_load=False)
+        ret.ops = Experiment("exp", [a])
+        return ret
+
+    @staticmethod
+    def backward(parents, grad):
+        (a,) = parents
+        return Tensor(np.exp(a.data)) * grad
+
+
+class Log:
+    @staticmethod
+    def forward(*args):
+        assert len(args) == 1
+        [a] = args
+        ret = Tensor(np.log(a.data), is_load=False)
+        ret.ops = Experiment("log", [a])
+        return ret
+
+    @staticmethod
+    def backward(parents, grad):
+        (a,) = parents
+        return (Tensor(np.ones(a.data.shape), is_load=True) / a) * grad
+
+
+class Div:
+    @staticmethod
+    def forward(*args):
+        pass
 
     @staticmethod
     def backward(parents, grad):
@@ -82,6 +127,23 @@ class Mul:
         if isinstance(grad, Tensor):
             return Tensor(y.data * grad.data), Tensor(x.data * grad.data)
         return Tensor(y.data * grad), Tensor(x.data * grad)
+
+
+class Div:
+    @staticmethod
+    def forward(*args):
+        assert len(args) == 2
+        [a, b] = args
+        return Tensor(a.data / b.data)
+
+    @staticmethod
+    def backward(parents, grad):
+        x, y = parents
+        if isinstance(grad, Tensor):
+            return Tensor(grad.data / y.data), Tensor(
+                grad.data * (-x.data / (y.data**2))
+            )
+        return Tensor(grad * (1 / y.data)), Tensor(grad * (-x.data / (y.data**2)))
 
 
 class Pow:
@@ -326,9 +388,21 @@ class Tensor:
         else:
             self.grad = Tensor(np.zeros_like(self.data).astype(np.float32))
 
-    def max(self):
-        val = Max.forward(self)
-        val.op = Max.backward
+    def relu(self):
+        val = ReLU.forward(self)
+        val.op = ReLU.backward
+        val.parents = [self]
+        return val
+
+    def exp(self):
+        val = Exp.forward(self)
+        val.op = Exp.backward
+        val.parents = [self]
+        return val
+
+    def log(self):
+        val = Log.forward(self)
+        val.op = Log.backward
         val.parents = [self]
         return val
 
@@ -379,7 +453,12 @@ class Tensor:
         return val
 
     def __truediv__(self, b):
-        raise NotImplementedError
+        if not isinstance(b, Tensor):
+            b = Tensor(b)
+        val = Div.forward(self, b)
+        val.op = Div.backward
+        val.parents = [self, b]
+        return val
 
     def sum(self):
         val = Sum.forward(self)

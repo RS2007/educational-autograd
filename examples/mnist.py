@@ -9,11 +9,11 @@ from tqdm import tqdm
 
 # TODO: Probably incorrect code start #
 def log_softmax(x):
-    return x - np.log(np.exp(x).sum())
+    return x - x.exp().sum().log()
 
 
 def cross_entropy_loss(x, y):
-    return np.mean(np.sum(-log_softmax(x) * y))
+    return (-log_softmax(x) * y).sum().mean()
 
 
 # TODO: Probably incorrect code ends #
@@ -44,8 +44,8 @@ class MyMNISTNet(nn.Module):
 
     def forward(self, x):
         x = np.reshape(x, 1 * 28 * 28)
-        x = self.layer1(x).relu().dropout(self.p)
-        x = self.layer2(x).relu().dropout(self.p)
+        x = self.layer1(x).relu()
+        x = self.layer2(x).relu()
         x = self.layer3(x)
         return x
 
@@ -118,7 +118,7 @@ def torch_mnist(train_loader, test_loader):
 
 
 def torch_mine(test_loader, train_loader):
-    pass
+    model = MyMNISTNet()
 
 
 if __name__ == "__main__":
