@@ -1,7 +1,7 @@
 import numpy as np
 from typing import List
 
-DEBUG = 0
+DEBUG = True
 
 
 class Experiment:
@@ -12,9 +12,6 @@ class Experiment:
     def __repr__(self):
         return f"{self.op_name}"
 
-
-def reshape_grad():
-    pass
 
 
 class Plus:
@@ -39,7 +36,7 @@ class ReLU:
     def forward(*args):
         assert len(args) == 1
         [a] = args
-        ret = Tensor(np.maximum(0, args.data))
+        ret = Tensor(np.maximum(0, a.data))
         ret.ops = Experiment("relu", [a])
         return ret
 
@@ -47,6 +44,20 @@ class ReLU:
     def backward(parents, grad):
         (a,) = parents
         return Tensor(np.where(a.data > 0, 1, 0)) * grad
+
+
+class Max:
+    @staticmethod
+    def forward(*args):
+        assert len(args) == 1
+        [a] = args
+        ret = Tensor(np.max(a.data))
+        ret.ops = Experiment("max",[a])
+        return ret
+    def backward(parents, grad):
+        assert len(parents) == 1
+        (parent,) = parents
+        return Tensor(np.broadcast_to(grad.data, parent.data.shape), is_load=False)
 
 
 class Exp:
@@ -175,6 +186,8 @@ class MatMul:
         [a, b] = parents
 
         def transpose_last_axis(x):
+            # matrix derivatives are tranposed, but here we can have batches so only transpose the last 2
+            # Function from tinytorch implementation (https://github.com/joey00072/Tinytorch)
             dim1, dim2 = -2, -1
             num_axes = len(x.shape)
             dim1, dim2 = (dim1 + num_axes) % num_axes, (dim2 + num_axes) % num_axes
@@ -290,7 +303,9 @@ class Tensor:
     tensor_id = 0
 
     def __init__(self, arr, parents=None, op=None, requires_grad=False, is_load=True):
-        assert isinstance(arr, list) or isinstance(arr, np.ndarray), "Should be a list"
+        if isinstance(arr,int) or isinstance(arr,float) or isinstance(arr,np.float32):
+            arr = [arr]
+        assert isinstance(arr, list) or isinstance(arr, np.ndarray), f"Should be a list got {type(arr)}"
         self.id = Tensor.tensor_id + 1
         Tensor.tensor_id += 1
         self.data = np.array(arr, dtype=np.float32)
@@ -391,6 +406,12 @@ class Tensor:
     def relu(self):
         val = ReLU.forward(self)
         val.op = ReLU.backward
+        val.parents = [self]
+        return val
+
+    def max(self):
+        val = Max.forward(self)
+        val.op = Max.backward
         val.parents = [self]
         return val
 
@@ -505,8 +526,10 @@ class Tensor:
                     and tensor.grad.data == 0
                 ):
                     tensor.grad = Tensor(np.zeros_like(tensor.data).astype(np.float32))
-
-                tensor.grad.data += grad.data
+                if tensor.data.shape != grad.data.shape:
+                    tensor.grad.data =  tensor.grad.data +  grad.data.sum()
+                else:
+                    tensor.grad.data =  tensor.grad.data +  grad.data
                 assert isinstance(tensor.grad.data, np.ndarray)
 
 

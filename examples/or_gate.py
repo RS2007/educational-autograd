@@ -32,7 +32,7 @@ def mine2(inputs, outputs):
     # TODO: use the tensor semantics here to do the same
     layer1 = nn.Linear2(2, 2)
     layer2 = nn.Linear2(2, 1)
-    optim = SGD(layer1.parameters(), 0.001)
+    optim = SGD(np.hstack([layer1.parameters(),layer2.parameters()]), 0.001)
     print("Training...")
     for i in tqdm(range(10000)):
         loss = Tensor([0])

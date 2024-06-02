@@ -44,8 +44,10 @@ class Linear2(Module):
         self.in_feat = in_feat
         self.out_feat = out_feat
         self.bias = bias
-        self.W = Tensor(np.random.rand(out_feat, in_feat))
-        self.b = Tensor(np.random.rand(out_feat))
+        self.W = Tensor(np.random.rand(out_feat, in_feat)/10000)
+        #print("W: ",self.W.data)
+        self.b = Tensor(np.random.rand(out_feat)/10000)
+        #print("b: ",self.b.data)
 
     def forward(self, x):
         return x @ self.W.transpose() + self.b

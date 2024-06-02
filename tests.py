@@ -172,13 +172,31 @@ class TestValBasic(unittest.TestCase):
         # def cross_entropy_loss(x, y):
         # return (-log_softmax(x) * y).sum().mean()
         intermediate = log_softmax(a).sum()
-        print(intermediate.data)
+        intermediate.backward()
         # my_result = log_softmax(a).sum()
         tiny_result = aa.log_softmax().sum()
         # my_result.backward()
-        # tiny_result.backward()
+        tiny_result.backward()
         np.testing.assert_allclose(intermediate.data, tiny_result.numpy(), rtol=1e-5)
-        # np.testing.assert_allclose(a.grad.data, aa.grad.numpy())
+        np.testing.assert_allclose(a.grad.data, aa.grad.numpy(),rtol=1e-5)
+
+    def test_batching(self):
+        tiny_tensor = tinygrad.tensor.Tensor
+        a = Tensor([[[1.,2.],[3.,4.]],[[2.,3.],[4.,5.]]])
+        b = Tensor([[1.,2.],[3.,4.]])
+        c = (a @ b)
+        d = c.sum()
+        a1 = tiny_tensor([[[1.,2.],[3.,4.]],[[2.,3.],[4.,5.]]],requires_grad=True)
+        b1 = tiny_tensor([[1.,2.],[3.,4.]],requires_grad=True)
+        c1 = (a1 @ b1)
+        d1 = c1.sum()
+        d.backward()
+        d1.backward()
+        np.testing.assert_allclose(d.data,d1.numpy(),rtol=1e-5)
+        np.testing.assert_allclose(c.data,c1.numpy(),rtol=1e-5)
+        np.testing.assert_allclose(c.grad.data,c1.grad.numpy(),rtol=1e-5)
+        np.testing.assert_allclose(a.grad.data,a1.grad.numpy(),rtol=1e-5)
+        np.testing.assert_allclose(b.grad.data,b1.grad.numpy(),rtol=1e-5)
 
 
 class TestCodegen(unittest.TestCase):
