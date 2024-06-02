@@ -5,19 +5,18 @@ from torchvision import datasets
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from tensor.tensor import Tensor
+from nn.optim import SGD
+import matplotlib.pyplot as plt
 
 
-# TODO: Probably incorrect code start #
 def log_softmax(x):
-    return x - np.log(np.exp(x).sum())
+    y = x - x.max()
+    return y - y.exp().sum().log()
 
 
 def cross_entropy_loss(x, y):
-    return np.mean(np.sum(-log_softmax(x) * y))
-
-
-# TODO: Probably incorrect code ends #
-
+    return (-log_softmax(x) * y).sum()
 
 class TorchMNISTNet(torch.nn.Module):
     def __init__(self):
@@ -29,25 +28,28 @@ class TorchMNISTNet(torch.nn.Module):
 
     def forward(self, x):
         x = x.view(-1, 28 * 28)
-        x = torch.nn.Dropout(self.p)(self.layer1(x).relu())
-        x = torch.nn.Dropout(self.p)(self.layer2(x).relu())
+        x = (self.layer1(x).relu())
+        x = (self.layer2(x).relu())
         x = self.layer3(x)
         return x
 
 
 class MyMNISTNet(nn.Module):
     def __init__(self):
-        self.layer1 = nn.Linear(28 * 28, 512)
-        self.layer2 = nn.Linear(512, 512)
-        self.layer3 = nn.Linear(512, 10)
-        self.p = 0.2
+        self.layer1 = nn.Linear2(28 * 28, 512)
+        self.layer2 = nn.Linear2(512, 512)
+        self.layer3 = nn.Linear2(512, 10)
 
     def forward(self, x):
-        x = np.reshape(x, 1 * 28 * 28)
-        x = self.layer1(x).relu().dropout(self.p)
-        x = self.layer2(x).relu().dropout(self.p)
+        x.data = x.data.reshape(-1,28*28)
+        x = self.layer1(x).relu()
+        #print("After layer 1: ",x.data)
+        x = self.layer2(x).relu()
         x = self.layer3(x)
         return x
+    def parameters(self):
+        return np.hstack([self.layer1.parameters(),self.layer2.parameters(),self.layer3.parameters()])
+
 
 
 def viz(image):
@@ -57,9 +59,10 @@ def viz(image):
 
 def torch_mnist(train_loader, test_loader):
     model = TorchMNISTNet()
+    print("First layer from torch: ",model.layer1.weight)
     criterion = torch.nn.CrossEntropyLoss()
-    optim = torch.optim.SGD(model.parameters(), lr=0.01)
-    epochs = 30
+    optim = torch.optim.SGD(model.parameters(), lr=0.0005)
+    epochs = 2
 
     for i in tqdm(range(epochs)):
         train_loss = 0.0
@@ -76,6 +79,8 @@ def torch_mnist(train_loader, test_loader):
 
         print("Epoch: {} \tTraining Loss: {:.6f}".format(i + 1, train_loss))
 
+    # TODO: save the mlp weights to
+    torch.save(model.state_dict(), "./mnist-weights.pth")
     test_loss = 0.0
     class_correct = list(0.0 for i in range(10))
     class_total = list(0.0 for i in range(10))
@@ -115,13 +120,60 @@ def torch_mnist(train_loader, test_loader):
     )
 
 
+def get_randomized_batch(inputs,results,batch_size):
+    randomized_indices = list(range(0, len(inputs), batch_size))
+    np.random.shuffle(randomized_indices)
+    for i in randomized_indices:
+        yield inputs[i : i + batch_size], results[i : i + batch_size]
+
+
 def torch_mine(test_loader, train_loader):
-    pass
+    model = MyMNISTNet()
+    epochs = 20
+    optim = SGD(model.parameters(),lr=0.01)
+    losses = np.array([0 for _ in range(epochs)])
+
+    for i in tqdm(range(epochs)):
+        train_loss = Tensor([0.0])
+        inputs,results = train_loader.data.numpy(),train_loader.targets.numpy()
+        dataiter = get_randomized_batch(inputs,results,32)
+        for indx,(data, target) in enumerate(dataiter):
+            data = Tensor(data.tolist())
+            target = Tensor(target.tolist())
+            optim.zero_grad()
+            output = model(data)
+            one_hot_target = np.array([np.eye(10)[int(target_elem)-1] for target_elem in target.data])
+            loss = cross_entropy_loss(output,Tensor(one_hot_target)).sum() / output.data.shape[0]
+            loss.backward()
+            optim.step_tensor()
+            train_loss += loss.sum().data[0]
+
+        train_loss = train_loss / inputs.shape[0]
+        losses[i] = train_loss.data[0]
+
+        print(f"Epoch: {i} \tTraining Loss: {train_loss.data}")
+
+    plt.plot(range(1,epochs+1),losses)
+    plt.show()
+
+    test_inputs,test_results = train_loader.data.numpy(),train_loader.targets.numpy()
+    true_cases = 0
+    for (input,output) in zip(test_inputs,test_results):
+        input = Tensor(input.tolist())
+        output = Tensor(output.tolist())
+        model_out = model(input)
+        if (np.argmax(model_out.data)+1) == output.data[0]:
+            true_cases += 1
+    print(f"Accuracy: {true_cases/len(test_inputs)}")
+
+
+
+
 
 
 if __name__ == "__main__":
     num_workers = 0
-    batch_size = 20
+    batch_size = 1
     transform = transforms.ToTensor()
     train_data = datasets.MNIST(
         root="data", train=True, download=True, transform=transform
@@ -136,7 +188,9 @@ if __name__ == "__main__":
     test_loader = torch.utils.data.DataLoader(
         test_data, batch_size=batch_size, num_workers=num_workers
     )
-    # images, labels = next(iter(train_loader))
+    images, labels = next(iter(train_loader))
+    print(labels[0])
+
     # viz(images.numpy()[0].reshape(28, 28))
-    torch_mnist(train_loader, test_loader)
-    torch_mine(train_loader, test_loader)
+    #torch_mnist(train_loader, test_loader)
+    torch_mine(train_data, test_data)

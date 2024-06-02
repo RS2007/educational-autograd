@@ -4,13 +4,14 @@
 ```bash
     PYTHONPATH="." python3 ./examples/or_gate.py
 ```
+- For MNIST: check `./mnist.ipynb`
 
 ### TODO:
-- [ ] A functional tensor library
-- [ ] Passing Backward passes with tests
-- [ ] MLP working
+- [x] A functional tensor library
+- [x] Passing Backward passes with tests
+- [x] MLP working
 - [ ] Basic CNN
-- [ ] CIFAR-10/MNIST working with the lib
+- [x] CIFAR-10/MNIST working with the lib (MNIST working)
 - [ ] Add a different backend than numpy
     - Current plan is to convert the autograd graph into a set of basic ops and compile that to C/Metal/CUDA(not decided yet) kernels
     - Yes this is inspired from tinygrad
